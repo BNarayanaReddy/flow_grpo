@@ -11,7 +11,7 @@
 
 <strong>2026-05-07</strong>
 
-* 🚀 Flow-GRPO is now supported in [verl-omni](https://github.com/verl-project/verl-omni)! This provides a verl-style training framework for Flow-GRPO & verl users.
+* 🚀 Flow-GRPO is now supported in [verl-omni](https://github.com/verl-project/verl-omni)! This provides a verl-style training framework for Flow-GRPO users.
 
 
 <details>
