@@ -457,9 +457,63 @@ def multi_score(device, score_dict):
 
     return _fn
 
+# For Audio Super Resolution
+def lsd_score(device):
+    from flow_grpo.lsd_scorer import LSD_Scorer
+    
+    scorer = LSD_Scorer(device=device)
+
+    def _fn(predictions, references, sample_rate=24000):
+        rewards = scorer(predictions, references, sample_rate=sample_rate)
+        return rewards, {}
+
+    return _fn
+
+def openL3_score(device):
+    from flow_grpo.openl3_scorer import OpenL3Scorer
+    
+    scorer = OpenL3Scorer(device=device)
+
+    def _fn(predictions, references):
+        rewards = scorer(predictions, references)
+        return rewards, {}
+
+    return _fn
+
+def audio_multi_score(device, score_dict):
+    score_functions = {
+        "lsd": lsd_score,
+        "openl3": openL3_score,
+    }
+    score_fns={}
+    for score_name, weight in score_dict.items():
+        score_fns[score_name] = score_functions[score_name](device) if 'device' in score_functions[score_name].__code__.co_varnames else score_functions[score_name]()
+
+    def _fn(predictions, references, sample_rate=24000):
+        total_scores = []
+        score_details = {}
+        
+        for score_name, weight in score_dict.items():
+            if score_name == "lsd":
+                scores, rewards = score_fns[score_name](predictions, references, sample_rate=sample_rate)
+            else:
+                scores, rewards = score_fns[score_name](predictions, references)
+            score_details[score_name] = scores
+            weighted_scores = [weight * score for score in scores]
+            
+            if not total_scores:
+                total_scores = weighted_scores
+            else:
+                total_scores = [total + weighted for total, weighted in zip(total_scores, weighted_scores)]
+        
+        score_details['avg'] = total_scores
+        return score_details, {}
+
+    return _fn
+
 def main():
     import torchvision.transforms as transforms
-
+    
     image_paths = [
         "nasa.jpg",
     ]
@@ -484,6 +538,25 @@ def main():
     # Print the scores
     print("Scores:", scores)
 
+def audio_main():
+    import torchaudio
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # openl3 + lsd
+    scorer = audio_multi_score(device, {"lsd": 1.0, "openl3": 1.0})
+
+    # Example usage with dummy data
+    sr = 24000
+    duration = 1  # 1 second
+    t = torch.linspace(0, duration, int(sr * duration))
+    signal_a = torch.sin(2 * torch.pi * 440 * t)
+    signal_b = torch.sin(2 * torch.pi * 445 * t) + \
+           0.5 * torch.sin(2 * torch.pi * 880 * t + torch.pi/4)
+
+    rewards, _ = scorer([signal_a.to(device)], [signal_b.to(device)], sample_rate=sr)
+    print("Rewards:", rewards)
 
 if __name__ == "__main__":
-    main()
+    # main()
+    audio_main()
