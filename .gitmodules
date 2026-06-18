@@ -1,0 +1,3 @@
+[submodule "external/UniverSR"]
+	path = external/UniverSR
+	url = https://github.com/woongzip1/UniverSR.git

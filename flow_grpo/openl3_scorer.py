@@ -10,16 +10,17 @@ class OpenL3Scorer(torch.nn.Module):
         
     @torch.no_grad()
     def __call__(self, predictions, references):
-        for i in range(len(predictions)):
-            predictions[i] = predictions[i].tolist()
-            references[i] = references[i].tolist()
+        predictions = [p.squeeze().tolist() if isinstance(p, torch.Tensor) else p for p in predictions]
+        references = [r.squeeze().tolist() if isinstance(r, torch.Tensor) else r for r in references]
         response = requests.post(
             "http://localhost:8000/openl3_reward",
             json={
             "predictions": predictions,
             "references": references,
             },
-        )
+        )   
+        if response.status_code != 200:
+            raise RuntimeError(f"OpenL3 Server Error {response.status_code}: {response.text}")
         rewards = response.json()["rewards"]
         return rewards
 
